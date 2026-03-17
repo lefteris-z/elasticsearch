@@ -1,0 +1,319 @@
+# ES|QL - Remove LIMIT limitation for full text functions
+# GitHub Issue: https://github.com/elastic/elasticsearch/issues/127415
+
+================================================================================
+                              ISSUE SUMMARY
+================================================================================
+
+## The Problem
+Currently in ES|QL, full text functions (like MATCH, QSTR, etc.) cannot be 
+used after a LIMIT clause.
+
+Example of what's blocked:
+```esql
+FROM index
+| LIMIT 100
+| WHERE MATCH(field, "search term")   <-- ERROR
+```
+
+## Why This Limitation Existed
+Full text functions previously could only be executed by Lucene (pushed down 
+to the storage/search layer). They couldn't run in the ES|QL compute engine 
+(the layer that processes data after it's retrieved).
+
+Since LIMIT is applied during compute, and full text functions had to run in 
+Lucene *before* compute, you couldn't use them after LIMIT.
+
+## What Changed
+Full text functions can now be executed at the compute engine level — meaning 
+they no longer *require* being pushed down to Lucene.
+
+## The Enhancement
+Remove the artificial restriction that prevents full text functions from being 
+used after LIMIT, since the technical limitation no longer applies.
+
+================================================================================
+                        ARCHITECTURE DIAGRAM
+================================================================================
+
+## ES|QL Query Execution Flow & LIMIT Blocking Full Text Functions
+
+### Query Example
+```esql
+FROM logs
+| LIMIT 100
+| WHERE MATCH(message, "error")   <-- BLOCKED
+```
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              ES|QL QUERY FLOW                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+   User Query: FROM logs | LIMIT 100 | WHERE MATCH(message, "error")
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           1. PARSING & ANALYSIS                             │
+│                                                                             │
+│   Query String ──► Parser ──► Logical Plan Tree                             │
+│                                                                             │
+│   LogicalPlan:                                                              │
+│   ┌─────────────────┐                                                       │
+│   │ Filter          │  ◄── WHERE MATCH(message, "error")                    │
+│   │ (FullTextFunc)  │                                                       │
+│   └────────┬────────┘                                                       │
+│            │                                                                │
+│   ┌────────▼────────┐                                                       │
+│   │ Limit(100)      │  ◄── LIMIT 100 (PipelineBreaker, executes on COORD)   │
+│   └────────┬────────┘                                                       │
+│            │                                                                │
+│   ┌────────▼────────┐                                                       │
+│   │ EsRelation      │  ◄── FROM logs                                        │
+│   └─────────────────┘                                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           2. VERIFICATION                                   │
+│                                                                             │
+│   Verifier.java calls postAnalysisPlanVerification()                        │
+│                                                                             │
+│   FullTextFunction.java:274-284                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │ checkCommandsBeforeExpression(                                      │   │
+│   │     plan,                                                           │   │
+│   │     condition,                // MATCH(message, "error")            │   │
+│   │     FullTextFunction.class,                                         │   │
+│   │     lp -> (lp instanceof Limit == false)  ◄── CHECK FAILS HERE!    │   │
+│   │         && (lp instanceof Aggregate == false)                       │   │
+│   │         && ...                                                      │   │
+│   │ )                                                                   │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│   Walking DOWN the plan tree from Filter:                                   │
+│                                                                             │
+│   Filter ──► finds MATCH ──► walks down ──► finds Limit ──► FAIL            │
+│                                                                             │
+│   Error: "[MATCH] function cannot be used after LIMIT"                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                              QUERY REJECTED
+
+
+================================================================================
+              WHY THIS BLOCKING EXISTS (Historical Reason)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     EXECUTION MODEL (Before Change)                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────┐
+                    │    COORDINATOR      │
+                    │    (Single Node)    │
+                    └──────────┬──────────┘
+                               │
+            ┌──────────────────┼──────────────────┐
+            │                  │                  │
+            ▼                  ▼                  ▼
+   ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+   │   DATA NODE 1   │ │   DATA NODE 2   │ │   DATA NODE 3   │
+   │                 │ │                 │ │                 │
+   │ ┌─────────────┐ │ │ ┌─────────────┐ │ │ ┌─────────────┐ │
+   │ │   LUCENE    │ │ │ │   LUCENE    │ │ │ │   LUCENE    │ │
+   │ │  (shards)   │ │ │ │  (shards)   │ │ │ │  (shards)   │ │
+   │ └─────────────┘ │ │ └─────────────┘ │ │ └─────────────┘ │
+   │                 │ │                 │ │                 │
+   │ Full Text Func  │ │ Full Text Func  │ │ Full Text Func  │
+   │ MUST run here   │ │ MUST run here   │ │ MUST run here   │
+   │ (Lucene query)  │ │ (Lucene query)  │ │ (Lucene query)  │
+   └─────────────────┘ └─────────────────┘ └─────────────────┘
+            │                  │                  │
+            └──────────────────┼──────────────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │    COORDINATOR      │
+                    │                     │
+                    │  LIMIT runs HERE    │  ◄── Pipeline Breaker
+                    │  (after merge)      │
+                    └─────────────────────┘
+
+   PROBLEM: If LIMIT runs first on coordinator, data is already
+            truncated. Full text function can't go back to Lucene!
+
+
+================================================================================
+                  THE FIX (What Issue #127415 Proposes)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      EXECUTION MODEL (After Change)                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+   Full Text Functions can NOW run in COMPUTE ENGINE (not just Lucene)
+
+                    ┌─────────────────────┐
+                    │    COORDINATOR      │
+                    │                     │
+                    │  1. LIMIT (100)     │  ◄── Data reduced to 100 rows
+                    │                     │
+                    │  2. MATCH can run   │  ◄── NEW! Runs in compute engine
+                    │     HERE now!       │      (doesn't need Lucene anymore)
+                    │                     │
+                    └─────────────────────┘
+
+   Since MATCH/QSTR/etc. can now execute at compute level,
+   the restriction in FullTextFunction.java:278 can be REMOVED:
+
+   BEFORE:  lp -> (lp instanceof Limit == false)   // blocks Limit
+   AFTER:   lp -> true                             // allow Limit (remove check)
+
+
+================================================================================
+                           KEY FILES SUMMARY
+================================================================================
+
+| File                              | Purpose                                  |
+|-----------------------------------|------------------------------------------|
+| FullTextFunction.java:274-284     | WHERE THE BLOCK HAPPENS - validation     |
+| Limit.java                        | Logical plan node, PipelineBreaker       |
+| LimitExec.java                    | Physical plan for LIMIT                  |
+| LimitOperator.java                | Runtime operator that truncates pages    |
+| Verifier.java:237-257             | Calls postAnalysisPlanVerification()     |
+
+
+================================================================================
+                           FILE PATHS
+================================================================================
+
+## Core Files
+
+### Validation (WHERE THE BLOCK IS)
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/expression/function/fulltext/FullTextFunction.java
+
+### LIMIT Implementation
+- Logical:  x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plan/logical/Limit.java
+- Physical: x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plan/physical/LimitExec.java
+- Operator: x-pack/plugin/esql/compute/src/main/java/org/elasticsearch/compute/operator/LimitOperator.java
+
+### Full Text Functions
+- Base:        x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/expression/function/fulltext/FullTextFunction.java
+- Match:       x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/expression/function/fulltext/Match.java
+- QueryString: x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/expression/function/fulltext/QueryString.java
+- Kql:         x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/expression/function/fulltext/Kql.java
+- Score:       x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/expression/function/fulltext/Score.java
+
+### Verification
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/analysis/Verifier.java
+
+### Mapping (Logical to Physical)
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/planner/mapper/Mapper.java
+
+### Execution Planning
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/planner/LocalExecutionPlanner.java
+
+
+================================================================================
+                           RELEVANT CODE SNIPPETS
+================================================================================
+
+## FullTextFunction.java:274-284 (THE BLOCKING CODE)
+
+```java
+checkCommandsBeforeExpression(
+    plan,
+    condition,
+    FullTextFunction.class,
+    lp -> (lp instanceof Limit == false)          // <-- BLOCKS LIMIT
+        && (lp instanceof Aggregate == false)
+        && (lp instanceof UnionAll == false)
+        && (lp instanceof MvExpand == false),
+    m -> "[" + m.functionName() + "] " + m.functionType(),
+    failures
+);
+```
+
+## checkCommandsBeforeExpression method (lines 323-345)
+
+```java
+private static <E extends Expression> void checkCommandsBeforeExpression(
+    LogicalPlan plan,
+    Expression condition,
+    Class<E> typeToken,
+    Predicate<LogicalPlan> commandCheck,
+    java.util.function.Function<E, String> typeErrorMsgProvider,
+    Failures failures
+) {
+    condition.forEachDown(typeToken, exp -> {
+        plan.forEachDown(LogicalPlan.class, lp -> {
+            if (commandCheck.test(lp) == false) {
+                String sourceText = lp.sourceText();
+                String errorMessage = sourceText.split(" ")[0].toUpperCase(Locale.ROOT);
+                // ...
+                failures.add(fail(plan, "{} cannot be used after {}", typeErrorMsgProvider.apply(exp), errorMessage));
+            }
+        });
+    });
+}
+```
+
+## Limit.java (key parts)
+
+```java
+public class Limit extends UnaryPlan implements TelemetryAware, PipelineBreaker, ExecutesOn {
+    
+    private final Expression limit;
+    private final transient boolean duplicated;  // For optimization
+    private final transient boolean local;       // Local limit not a pipeline breaker
+    
+    // ...
+}
+```
+
+
+================================================================================
+                           TEST FILES
+================================================================================
+
+- x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/analysis/VerifierTests.java (lines 1528-1662)
+- x-pack/plugin/esql/src/internalClusterTest/java/org/elasticsearch/xpack/esql/plugin/MatchFunctionIT.java (line 92)
+- x-pack/plugin/esql/src/internalClusterTest/java/org/elasticsearch/xpack/esql/plugin/ScoreFunctionIT.java (line 131)
+
+
+================================================================================
+                           ERROR MESSAGES
+================================================================================
+
+When the validation fails, these error messages are generated:
+- "[MATCH] function cannot be used after LIMIT"
+- "[QSTR] function cannot be used after LIMIT"
+- "[:] operator cannot be used after LIMIT"
+- "[SCORE] function cannot be used after LIMIT"
+
+
+================================================================================
+                           POTENTIAL FIX APPROACH
+================================================================================
+
+To remove the LIMIT restriction:
+
+1. Modify FullTextFunction.java:274-284
+   - Remove `(lp instanceof Limit == false)` from the predicate
+
+2. Similarly for Score function check at lines 290-297
+   - Remove `(lp instanceof Limit == false)` from the predicate
+
+3. Update/remove related tests in VerifierTests.java that expect the error
+
+4. Add new tests to verify full text functions work correctly after LIMIT
+
+5. Consider edge cases:
+   - Performance implications
+   - Scoring behavior after LIMIT
+   - Interaction with other pipeline breakers

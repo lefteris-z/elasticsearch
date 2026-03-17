@@ -41,6 +41,7 @@ import org.elasticsearch.search.aggregations.bucket.sampler.random.RandomSamplin
 import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.GeoDistanceSortBuilder;
 import org.elasticsearch.test.ESTestCase;
+import org.elasticsearch.test.junit.annotations.TestLogging;
 import org.elasticsearch.xpack.core.enrich.EnrichPolicy;
 import org.elasticsearch.xpack.esql.EsqlTestUtils;
 import org.elasticsearch.xpack.esql.EsqlTestUtils.TestConfigurableSearchStats;
@@ -240,7 +241,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 
-//@TestLogging(value = "org.elasticsearch.xpack.esql:TRACE", reason = "debug")
+@TestLogging(value = "org.elasticsearch.xpack.esql:TRACE", reason = "debug")
 public class PhysicalPlanOptimizerTests extends ESTestCase {
 
     private static final String PARAM_FORMATTING = "%1$s";
@@ -9693,6 +9694,37 @@ public class PhysicalPlanOptimizerTests extends ESTestCase {
         assertThat(sorts.size(), equalTo(1));
         assertThat(as(sorts.getFirst().child(), FieldAttribute.class).field().getName(), equalTo("last_name"));
         var esRelation = as(topN.child(), EsRelation.class);
+    }
+
+    public void testFullTextFunctionWithLimit() {
+        var plan = physicalPlan("FROM test | WHERE MATCH(first_name, \"foo\") | LIMIT 10 | KEEP first_name");
+        Tuple<PhysicalPlan, PhysicalPlan> plans = PlannerUtils.breakPlanBetweenCoordinatorAndDataNode(plan, config);
+
+        assertNotNull(plans);
+        System.out.println("CoordNode Plan:\n" + plans.v1());
+        System.out.println("DataNode Plan:\n" + plans.v2());
+    }
+
+    public void testFullTextFunctionWithLimit2() {
+        var plan = physicalPlan("FROM test | LIMIT 10 | WHERE MATCH(first_name, \"foo\") | KEEP first_name");
+        Tuple<PhysicalPlan, PhysicalPlan> plans = PlannerUtils.breakPlanBetweenCoordinatorAndDataNode(plan, config);
+
+        assertNotNull(plans);
+        System.out.println("CoordNode Plan:\n" + plans.v1());
+        System.out.println("DataNode Plan:\n" + plans.v2());
+    }
+
+    public void testMatchAfterLimit() {
+        // Query: Get 10 rows first, then filter by MATCH
+        // MATCH should NOT be pushed to data nodes - it runs on coordinator
+        var plan = physicalPlan("FROM test | LIMIT 10 | WHERE MATCH(first_name, \"foo\")");
+
+        Tuple<PhysicalPlan, PhysicalPlan> plans = PlannerUtils.breakPlanBetweenCoordinatorAndDataNode(plan, config);
+        System.out.println("=== COORDINATOR PLAN ===");
+        System.out.println(plans.v1());
+        System.out.println();
+        System.out.println("=== DATA NODE PLAN ===");
+        System.out.println(plans.v2());
     }
 
     @Override

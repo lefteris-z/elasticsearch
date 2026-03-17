@@ -1,0 +1,43 @@
+Subject: [PATCH] Test LIMIT and MATCH
+---
+Index: x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/optimizer/PhysicalPlanOptimizerTests.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/optimizer/PhysicalPlanOptimizerTests.java b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/optimizer/PhysicalPlanOptimizerTests.java
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/optimizer/PhysicalPlanOptimizerTests.java	(revision c6fafa5ab6ff0fe7c87f465dfcf4b3dff26743f3)
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/optimizer/PhysicalPlanOptimizerTests.java	(date 1773662636584)
+@@ -41,6 +41,7 @@
+ import org.elasticsearch.search.sort.FieldSortBuilder;
+ import org.elasticsearch.search.sort.GeoDistanceSortBuilder;
+ import org.elasticsearch.test.ESTestCase;
++import org.elasticsearch.test.junit.annotations.TestLogging;
+ import org.elasticsearch.xpack.core.enrich.EnrichPolicy;
+ import org.elasticsearch.xpack.esql.EsqlTestUtils;
+ import org.elasticsearch.xpack.esql.EsqlTestUtils.TestConfigurableSearchStats;
+@@ -240,7 +241,7 @@
+ import static org.hamcrest.Matchers.nullValue;
+ import static org.hamcrest.Matchers.startsWith;
+
+-//@TestLogging(value = "org.elasticsearch.xpack.esql:TRACE", reason = "debug")
++@TestLogging(value = "org.elasticsearch.xpack.esql:TRACE", reason = "debug")
+ public class PhysicalPlanOptimizerTests extends ESTestCase {
+
+     private static final String PARAM_FORMATTING = "%1$s";
+@@ -9695,6 +9696,15 @@
+         var esRelation = as(topN.child(), EsRelation.class);
+     }
+
++    public void testFullTextFunctionWithLimit() {
++        var plan = physicalPlan("FROM test | WHERE MATCH(first_name, \"foo\") | LIMIT 10 | KEEP first_name");
++        Tuple<PhysicalPlan, PhysicalPlan> plans = PlannerUtils.breakPlanBetweenCoordinatorAndDataNode(plan, config);
++
++        assertNotNull(plans);
++        System.out.println("CoordNode Plan:\n" + plans.v1());
++        System.out.println("DataNode Plan:\n" + plans.v2());
++    }
++
+     @Override
+     protected List<String> filteredWarnings() {
+         return withDefaultLimitWarning(super.filteredWarnings());
