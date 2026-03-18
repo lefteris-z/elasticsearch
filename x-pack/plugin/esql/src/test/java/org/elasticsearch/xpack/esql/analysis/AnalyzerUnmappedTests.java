@@ -565,12 +565,6 @@ public class AnalyzerUnmappedTests extends ESTestCase {
             setUnmappedLoad("FROM test | WHERE match_phrase(first_name, \"foo bar\") | KEEP first_name"),
             "does not support full-text search function [MatchPhrase]"
         );
-        if (EsqlCapabilities.Cap.MULTI_MATCH_FUNCTION.isEnabled()) {
-            verificationFailure(
-                setUnmappedLoad("FROM test | WHERE multi_match(\"foo\", first_name) | KEEP first_name"),
-                "does not support full-text search function [MultiMatch]"
-            );
-        }
         if (EsqlCapabilities.Cap.QSTR_FUNCTION.isEnabled()) {
             verificationFailure(
                 setUnmappedLoad("FROM test | WHERE qstr(\"first_name: foo\") | KEEP first_name"),
