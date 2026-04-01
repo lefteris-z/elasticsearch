@@ -1,0 +1,5 @@
+area: ES|QL
+issues: []
+pr: 145456
+summary: Full-text functions were incorrectly rejected when used before a SAMPLE
+type: bug
