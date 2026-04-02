@@ -2419,7 +2419,7 @@ public class EsqlCapabilities {
         /**
          * Fix full-text functions being rejected after SAMPLE.
          */
-        FIX_SAMPLE_AFTER_FT,
+        FIX_SAMPLE_AFTER_KQL_OR_QSTR,
 
         // Last capability should still have a comma for fewer merge conflicts when adding new ones :)
         // This comment prevents the semicolon from being on the previous capability when Spotless formats the file.

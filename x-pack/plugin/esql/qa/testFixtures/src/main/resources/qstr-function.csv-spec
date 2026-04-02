@@ -405,7 +405,7 @@ FROM logs
 
 qstrWhereBeforeSample
 required_capability: qstr_function
-required_capability: fix_sample_after_ft
+required_capability: fix_sample_after_kql_or_qstr
 
 FROM books                                         
 | WHERE QSTR("author: Faulkner")
@@ -419,7 +419,7 @@ count:long
 
 qstrWhereAfterSample
 required_capability: qstr_function
-required_capability: fix_sample_after_ft
+required_capability: fix_sample_after_kql_or_qstr
 
 FROM books                                         
 | SAMPLE 0.9999                                    
