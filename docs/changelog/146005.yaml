@@ -1,0 +1,5 @@
+area: ES|QL
+issues: []
+pr: 146005
+summary: Fix MMR NPE when initial doc has a null vector
+type: bug
