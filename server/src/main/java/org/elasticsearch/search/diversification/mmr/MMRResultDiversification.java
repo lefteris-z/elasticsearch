@@ -47,9 +47,11 @@ public class MMRResultDiversification extends ResultDiversification<MMRResultDiv
 
         // cache the similarity scores for the query vector vs. searchHits
         float[] querySimilarities = getQuerySimilarityForDocs(docs);
-        // always add the highest relevant doc to the list
+        // always add the highest relevant doc to the list as long as it has field vector
         int prevSelectedDocRank = 1 + IntStream.range(0, querySimilarities.length)
-            .reduce(0, (a, b) -> querySimilarities[a] >= querySimilarities[b] ? a : b);
+            .filter(i -> context.getFieldVector(i + 1) != null)
+            .reduce((a, b) -> querySimilarities[a] >= querySimilarities[b] ? a : b)
+            .orElse(0);
 
         selectedDocRanks.add(prevSelectedDocRank);
         int topDocsSize = context.getSize();

@@ -15,6 +15,7 @@ import org.elasticsearch.test.ESTestCase;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -107,6 +108,37 @@ public class MMRResultDiversificationTests extends ESTestCase {
         expectedDocIds.addAll(List.of(3, 4, 6));
 
         return diversificationContext;
+    }
+
+    public void testMMRDiversificationWithActualNullVector() throws IOException {
+        Supplier<VectorData> queryVectorData = () -> null;
+        var diversificationContext = new MMRResultDiversificationContext("dense_vector_field", 0.3f, 3, queryVectorData);
+
+        Map<Integer, VectorData> vectors = new HashMap<>();
+        vectors.put(1, null);
+        vectors.put(2, new VectorData(new float[] { 0.4f, 0.2f, 0.4f, 0.4f }));
+        vectors.put(3, new VectorData(new float[] { 0.4f, 0.2f, 0.3f, 0.3f }));
+        vectors.put(4, new VectorData(new float[] { 0.4f, 0.1f, 0.3f, 0.3f }));
+        diversificationContext.setFieldVectors(vectors);
+
+        RankDoc[] docs = new RankDoc[] {
+            new RankDoc(1, 2.0f, 1),
+            new RankDoc(2, 1.8f, 1),
+            new RankDoc(3, 1.0f, 1),
+            new RankDoc(4, 0.8f, 1) };
+
+        int rankIndex = 1;
+        for (RankDoc doc : docs) {
+            doc.rank = rankIndex++;
+        }
+
+        MMRResultDiversification resultDiversification = new MMRResultDiversification(diversificationContext);
+        RankDoc[] diversifiedTopDocs = resultDiversification.diversify(docs);
+
+        assertEquals(3, diversifiedTopDocs.length);
+        for (RankDoc doc : diversifiedTopDocs) {
+            assertNotEquals(1, doc.rank);
+        }
     }
 
     public void testMMRDiversificationIfNoSearchHits() throws IOException {
