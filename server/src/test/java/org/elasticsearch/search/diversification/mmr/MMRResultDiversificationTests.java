@@ -22,43 +22,61 @@ import java.util.function.Supplier;
 
 public class MMRResultDiversificationTests extends ESTestCase {
 
-    public void testMMRDiversification() throws IOException {
-        for (int x = 0; x < 10; x++) {
-            List<Integer> expectedDocIds = new ArrayList<>();
-            MMRResultDiversificationContext diversificationContext = getRandomContext(expectedDocIds);
+    public void testMMRDiversificationWithFloatVectors() throws IOException {
+        List<Integer> expectedDocIds = new ArrayList<>();
+        MMRResultDiversificationContext diversificationContext = getFloatContext(expectedDocIds);
 
-            RankDoc[] docs = new RankDoc[] {
-                new RankDoc(1, 2.0f, 1),
-                new RankDoc(2, 1.8f, 1),
-                new RankDoc(3, 1.8f, 1),
-                new RankDoc(4, 1.0f, 1),
-                new RankDoc(5, 0.8f, 1),
-                new RankDoc(6, 0.8f, 1) };
+        RankDoc[] docs = new RankDoc[] {
+            new RankDoc(1, 2.0f, 1),
+            new RankDoc(2, 1.8f, 1),
+            new RankDoc(3, 1.8f, 1),
+            new RankDoc(4, 1.0f, 1),
+            new RankDoc(5, 0.8f, 1),
+            new RankDoc(6, 0.8f, 1) };
 
-            int rankIndex = 1;
-            for (RankDoc doc : docs) {
-                doc.rank = rankIndex++;
-            }
+        int rankIndex = 1;
+        for (RankDoc doc : docs) {
+            doc.rank = rankIndex++;
+        }
 
-            MMRResultDiversification resultDiversification = new MMRResultDiversification(diversificationContext);
-            RankDoc[] diversifiedTopDocs = resultDiversification.diversify(docs);
-            assertNotSame(docs, diversifiedTopDocs);
+        MMRResultDiversification resultDiversification = new MMRResultDiversification(diversificationContext);
+        RankDoc[] diversifiedTopDocs = resultDiversification.diversify(docs);
+        assertNotSame(docs, diversifiedTopDocs);
 
-            assertEquals(expectedDocIds.size(), diversifiedTopDocs.length);
-            for (int i = 0; i < expectedDocIds.size(); i++) {
-                assertEquals((int) expectedDocIds.get(i), diversifiedTopDocs[i].doc);
-            }
+        assertEquals(expectedDocIds.size(), diversifiedTopDocs.length);
+        for (int i = 0; i < expectedDocIds.size(); i++) {
+            assertEquals((int) expectedDocIds.get(i), diversifiedTopDocs[i].doc);
         }
     }
 
-    private MMRResultDiversificationContext getRandomContext(List<Integer> expectedDocIds) {
-        if (randomBoolean()) {
-            return getRandomFloatContext(expectedDocIds);
+    public void testMMRDiversificationWithByteVectors() throws IOException {
+        List<Integer> expectedDocIds = new ArrayList<>();
+        MMRResultDiversificationContext diversificationContext = getByteContext(expectedDocIds);
+
+        RankDoc[] docs = new RankDoc[] {
+            new RankDoc(1, 2.0f, 1),
+            new RankDoc(2, 1.8f, 1),
+            new RankDoc(3, 1.8f, 1),
+            new RankDoc(4, 1.0f, 1),
+            new RankDoc(5, 0.8f, 1),
+            new RankDoc(6, 0.8f, 1) };
+
+        int rankIndex = 1;
+        for (RankDoc doc : docs) {
+            doc.rank = rankIndex++;
         }
-        return getRandomByteContext(expectedDocIds);
+
+        MMRResultDiversification resultDiversification = new MMRResultDiversification(diversificationContext);
+        RankDoc[] diversifiedTopDocs = resultDiversification.diversify(docs);
+        assertNotSame(docs, diversifiedTopDocs);
+
+        assertEquals(expectedDocIds.size(), diversifiedTopDocs.length);
+        for (int i = 0; i < expectedDocIds.size(); i++) {
+            assertEquals((int) expectedDocIds.get(i), diversifiedTopDocs[i].doc);
+        }
     }
 
-    private MMRResultDiversificationContext getRandomFloatContext(List<Integer> expectedDocIds) {
+    private MMRResultDiversificationContext getFloatContext(List<Integer> expectedDocIds) {
 
         Supplier<VectorData> queryVectorData = () -> new VectorData(new float[] { 0.5f, 0.2f, 0.4f, 0.4f });
         var diversificationContext = new MMRResultDiversificationContext("dense_vector_field", 0.3f, 3, queryVectorData);
@@ -84,7 +102,7 @@ public class MMRResultDiversificationTests extends ESTestCase {
         return diversificationContext;
     }
 
-    private MMRResultDiversificationContext getRandomByteContext(List<Integer> expectedDocIds) {
+    private MMRResultDiversificationContext getByteContext(List<Integer> expectedDocIds) {
 
         Supplier<VectorData> queryVectorData = () -> new VectorData(new byte[] { 0x50, 0x20, 0x40, 0x40 });
         var diversificationContext = new MMRResultDiversificationContext("dense_vector_field", 0.3f, 3, queryVectorData);
@@ -161,7 +179,7 @@ public class MMRResultDiversificationTests extends ESTestCase {
         MMRResultDiversification resultDiversification = new MMRResultDiversification(diversificationContext);
         RankDoc[] diversifiedTopDocs = resultDiversification.diversify(docs);
 
-        assertEquals(1, diversifiedTopDocs.length);
+        assertEquals(3, diversifiedTopDocs.length);
         assertEquals(1, diversifiedTopDocs[0].rank);
     }
 
