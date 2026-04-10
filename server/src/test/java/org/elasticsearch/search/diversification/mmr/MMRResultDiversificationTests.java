@@ -141,6 +141,30 @@ public class MMRResultDiversificationTests extends ESTestCase {
         }
     }
 
+    public void testMMRDiversificationWithAllNullVectors() throws IOException {
+        Supplier<VectorData> queryVectorData = () -> null;
+        var diversificationContext = new MMRResultDiversificationContext("dense_vector_field", 0.3f, 3, queryVectorData);
+
+        Map<Integer, VectorData> vectors = new HashMap<>();
+        vectors.put(1, null);
+        vectors.put(2, null);
+        vectors.put(3, null);
+        diversificationContext.setFieldVectors(vectors);
+
+        RankDoc[] docs = new RankDoc[] { new RankDoc(1, 2.0f, 1), new RankDoc(2, 1.8f, 1), new RankDoc(3, 1.0f, 1) };
+
+        int rankIndex = 1;
+        for (RankDoc doc : docs) {
+            doc.rank = rankIndex++;
+        }
+
+        MMRResultDiversification resultDiversification = new MMRResultDiversification(diversificationContext);
+        RankDoc[] diversifiedTopDocs = resultDiversification.diversify(docs);
+
+        assertEquals(1, diversifiedTopDocs.length);
+        assertEquals(1, diversifiedTopDocs[0].rank);
+    }
+
     public void testMMRDiversificationIfNoSearchHits() throws IOException {
 
         Supplier<VectorData> queryVectorData = () -> new VectorData(new float[] { 0.5f, 0.2f, 0.4f, 0.4f });
