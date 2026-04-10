@@ -504,7 +504,7 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
         // currently throws 400 instead of returning empty results
         try {
             RankDoc[] results = retriever.combineInnerRetrieverResults(docs, false);
-            assertEquals(0, results.length);
+            assertEquals(1, results.length);
         } finally {
             cleanDocsAndHits(docs, hits);
         }

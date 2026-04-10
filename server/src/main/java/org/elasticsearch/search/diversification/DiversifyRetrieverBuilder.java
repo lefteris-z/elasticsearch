@@ -401,10 +401,6 @@ public final class DiversifyRetrieverBuilder extends CompoundRetrieverBuilder<Di
             }
         }
 
-        if (fieldVectors.isEmpty()) {
-            return new RankDoc[0];
-        }
-
         diversificationContext.setFieldVectors(fieldVectors);
 
         try {
