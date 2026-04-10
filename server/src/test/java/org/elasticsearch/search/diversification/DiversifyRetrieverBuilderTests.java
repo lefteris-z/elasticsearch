@@ -38,6 +38,7 @@ import org.elasticsearch.index.query.QueryRewriteContext;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.PointInTimeBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.rank.RankDoc;
 import org.elasticsearch.search.retriever.CompoundRetrieverBuilder;
 import org.elasticsearch.search.retriever.RetrieverBuilder;
 import org.elasticsearch.search.retriever.TestRetrieverBuilder;
@@ -476,6 +477,34 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
         // should still not throw an exception
         try {
             retriever.combineInnerRetrieverResults(docs, false);
+        } finally {
+            cleanDocsAndHits(docs, hits);
+        }
+    }
+
+    public void testCombineInnerRetrieverResultsWithAllMissingVectors() {
+        var queryRewriteContext = getQueryRewriteContext();
+        var retriever = new DiversifyRetrieverBuilder(
+            getInnerRetriever(),
+            ResultDiversificationType.MMR,
+            "rgb_vector",
+            10,
+            3,
+            new VectorData(new float[] { 0.5f, 0.2f, 0.4f, 0.4f }),
+            null,
+            0.5f
+        );
+
+        retriever.doRewrite(queryRewriteContext);
+
+        List<ScoreDoc[]> docs = new ArrayList<>();
+        ScoreDoc[] hits = new DiversifyRetrieverBuilder.RankDocWithSearchHit[] { getTestSearchHitWithNoValue(1, 90002, 1.0f) };
+        docs.add(hits);
+
+        // currently throws 400 instead of returning empty results
+        try {
+            RankDoc[] results = retriever.combineInnerRetrieverResults(docs, false);
+            assertEquals(0, results.length);
         } finally {
             cleanDocsAndHits(docs, hits);
         }

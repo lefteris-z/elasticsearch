@@ -402,14 +402,7 @@ public final class DiversifyRetrieverBuilder extends CompoundRetrieverBuilder<Di
         }
 
         if (fieldVectors.isEmpty()) {
-            throw new ElasticsearchStatusException(
-                String.format(
-                    Locale.ROOT,
-                    "Failed to retrieve vectors for field [%s]. Is it a [dense_vector] or [semantic_text] field with text embeddings?",
-                    diversificationField
-                ),
-                RestStatus.BAD_REQUEST
-            );
+            return new RankDoc[0];
         }
 
         diversificationContext.setFieldVectors(fieldVectors);
