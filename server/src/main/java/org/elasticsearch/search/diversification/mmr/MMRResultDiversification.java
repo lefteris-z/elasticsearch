@@ -17,9 +17,11 @@ import org.elasticsearch.search.vectors.VectorData;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 public class MMRResultDiversification extends ResultDiversification<MMRResultDiversificationContext> {
@@ -104,6 +106,21 @@ public class MMRResultDiversification extends ResultDiversification<MMRResultDiv
             returnDocIndices.add(docIdIndexMapping.get(docRank));
         }
         returnDocIndices.sort(Integer::compareTo);
+
+        // If not enough docs have been collected, backfill
+        // with no-vector docs in original order
+        if (selectedDocRanks.size() < topDocsSize) {
+            Set<Integer> selectedDocRanksSet = new HashSet<>(selectedDocRanks);
+
+            for (RankDoc doc : docs) {
+                if (returnDocIndices.size() >= topDocsSize) break;
+                if (selectedDocRanksSet.contains(doc.rank)) continue;
+                var vector = context.getFieldVector(doc.rank);
+                if (vector == null || vector.size() == 0) {
+                    returnDocIndices.add(docIdIndexMapping.get(doc.rank));
+                }
+            }
+        }
 
         RankDoc[] ret = new RankDoc[returnDocIndices.size()];
         for (int i = 0; i < returnDocIndices.size(); i++) {

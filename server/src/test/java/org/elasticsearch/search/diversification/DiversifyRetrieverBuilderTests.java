@@ -510,6 +510,36 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
         }
     }
 
+    public void testCombineInnerRetrieverResultsDropsMissingVectorDocs() {
+        var queryRewriteContext = getQueryRewriteContext();
+        var retriever = new DiversifyRetrieverBuilder(
+            getInnerRetriever(),
+            ResultDiversificationType.MMR,
+            "rgb_vector",
+            10,
+            10,
+            new VectorData(new float[] { 0.5f, 0.2f, 0.4f, 0.4f }),
+            null,
+            0.5f
+        );
+
+        retriever.doRewrite(queryRewriteContext);
+
+        List<ScoreDoc[]> docs = new ArrayList<>();
+        ScoreDoc[] hits = new DiversifyRetrieverBuilder.RankDocWithSearchHit[] {
+            getTestSearchHitWithNoValue(1, 90002, 1.0f),
+            getTestSearchHit(2, 4, 4.0f, new float[] { 1.0f, 0.0f, 0.0f }) };
+        docs.add(hits);
+
+        try {
+            RankDoc[] results = retriever.combineInnerRetrieverResults(docs, false);
+            // both docs should be returned since limit (10) > number of results (2)
+            assertEquals(2, results.length);
+        } finally {
+            cleanDocsAndHits(docs, hits);
+        }
+    }
+
     private void cleanDocsAndHits(List<ScoreDoc[]> docs, ScoreDoc[] hits) {
         docs.clear();
         for (ScoreDoc hit : hits) {
