@@ -333,32 +333,16 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
         ScoreDoc[] hits = getTestNonVectorSearchHits();
         docs.add(hits);
 
-        ElasticsearchStatusException badDocFieldEx = assertThrows(
-            ElasticsearchStatusException.class,
-            () -> retriever.combineInnerRetrieverResults(docs, false)
-        );
-        assertEquals(
-            "Failed to retrieve vectors for field [dense_vector_field]. "
-                + "Is it a [dense_vector] or [semantic_text] field with text embeddings?",
-            badDocFieldEx.getMessage()
-        );
-        assertEquals(400, badDocFieldEx.status().getStatus());
+        RankDoc[] results = retriever.combineInnerRetrieverResults(docs, false);
+        assertEquals(0, results.length);
 
         cleanDocsAndHits(docs, hits);
 
         ScoreDoc[] hitsWithNoValues = getTestSearchHitsWithNoValues();
         docs.add(hitsWithNoValues);
 
-        ElasticsearchStatusException docsWithNoValuesEx = assertThrows(
-            ElasticsearchStatusException.class,
-            () -> retriever.combineInnerRetrieverResults(docs, false)
-        );
-        assertEquals(
-            "Failed to retrieve vectors for field [dense_vector_field]. "
-                + "Is it a [dense_vector] or [semantic_text] field with text embeddings?",
-            docsWithNoValuesEx.getMessage()
-        );
-        assertEquals(400, docsWithNoValuesEx.status().getStatus());
+        RankDoc[] resultsWithNoValues = retriever.combineInnerRetrieverResults(docs, false);
+        assertEquals(0, resultsWithNoValues.length);
 
         cleanDocsAndHits(docs, hitsWithNoValues);
     }
@@ -514,7 +498,7 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
         var retriever = new DiversifyRetrieverBuilder(
             getInnerRetriever(),
             ResultDiversificationType.MMR,
-            "rgb_vector",
+            "dense_vector_field",
             10,
             10,
             new VectorData(new float[] { 0.5f, 0.2f, 0.4f, 0.4f }),
@@ -527,7 +511,7 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
         List<ScoreDoc[]> docs = new ArrayList<>();
         ScoreDoc[] hits = new DiversifyRetrieverBuilder.RankDocWithSearchHit[] {
             getTestSearchHitWithNoValue(1, 90002, 1.0f),
-            getTestSearchHit(2, 4, 4.0f, new float[] { 1.0f, 0.0f, 0.0f }) };
+            getTestSearchHit(2, 4, 4.0f, new float[] { 0.5f, 0.2f, 0.4f, 0.4f }) };
         docs.add(hits);
 
         try {
