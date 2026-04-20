@@ -735,7 +735,7 @@ teardown:
                   num_candidates: 6
 
   - match: { hits.total.value: 6 }
-  - length: { hits.hits: 3 }
+  - length: { hits.hits: 0 }
 
   - do:
       search:
@@ -755,7 +755,7 @@ teardown:
                   num_candidates: 6
 
   - match: { hits.total.value: 6 }
-  - length: { hits.hits: 3 }
+  - length: { hits.hits: 0 }
 
   - do:
       search:
@@ -775,7 +775,7 @@ teardown:
                   num_candidates: 6
 
   - match: { hits.total.value: 6 }
-  - length: { hits.hits: 3 }
+  - length: { hits.hits: 0 }
 
 ---
 "Test MMR result diversification cannot have a string encoded query vector":

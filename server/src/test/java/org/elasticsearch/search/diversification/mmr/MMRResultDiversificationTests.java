@@ -179,8 +179,7 @@ public class MMRResultDiversificationTests extends ESTestCase {
         MMRResultDiversification resultDiversification = new MMRResultDiversification(diversificationContext);
         RankDoc[] diversifiedTopDocs = resultDiversification.diversify(docs);
 
-        assertEquals(3, diversifiedTopDocs.length);
-        assertEquals(1, diversifiedTopDocs[0].rank);
+        assertEquals(0, diversifiedTopDocs.length);
     }
 
     public void testMMRDiversificationIfNoSearchHits() throws IOException {

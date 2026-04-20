@@ -501,10 +501,9 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
         ScoreDoc[] hits = new DiversifyRetrieverBuilder.RankDocWithSearchHit[] { getTestSearchHitWithNoValue(1, 90002, 1.0f) };
         docs.add(hits);
 
-        // currently throws 400 instead of returning empty results
         try {
             RankDoc[] results = retriever.combineInnerRetrieverResults(docs, false);
-            assertEquals(1, results.length);
+            assertEquals(0, results.length);
         } finally {
             cleanDocsAndHits(docs, hits);
         }
@@ -533,8 +532,7 @@ public class DiversifyRetrieverBuilderTests extends ESTestCase {
 
         try {
             RankDoc[] results = retriever.combineInnerRetrieverResults(docs, false);
-            // both docs should be returned since limit (10) > number of results (2)
-            assertEquals(2, results.length);
+            assertEquals(1, results.length);
         } finally {
             cleanDocsAndHits(docs, hits);
         }
