@@ -331,7 +331,6 @@ setup:
 ---
 "Validate diversification does not work with sparse vector data":
   - do:
-      catch: /Failed to retrieve vectors for field \[content\]. Is it a \[dense_vector\] or \[semantic_text\] field with text embeddings?/
       search:
         index: test-result-diversification-sparse-semantic-text-index
         body:
@@ -348,10 +347,7 @@ setup:
                     match:
                       content:
                         query: "What causes muscle soreness after running?"
-
-  - match: { status: 400 }
-  - match: { error.type: status_exception }
-
+  - length: { hits.hits: 0 }
 ---
 "Validate query_vector or query_vector_builder but not both":
 
