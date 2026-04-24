@@ -2606,6 +2606,11 @@ public class EsqlCapabilities {
          */
         PROMQL_TIME_FUNCTIONS,
 
+        /**
+         * Support for match operator after MV_EXPAND.
+         */
+        MATCH_OPERATOR_AFTER_MV_EXPAND,
+
         // Last capability should still have a comma for fewer merge conflicts when adding new ones :)
         // This comment prevents the semicolon from being on the previous capability when Spotless formats the file.
         ;

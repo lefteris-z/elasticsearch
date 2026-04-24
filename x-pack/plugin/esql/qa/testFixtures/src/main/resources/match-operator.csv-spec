@@ -1043,7 +1043,7 @@ constant_keyword-foo:keyword | keyword:keyword
 ;
 
 matchOperatorAfterMVExpand
-required_capability: match_operator_colon
+required_capability: match_operator_after_mv_expand
 
 FROM books 
 | MV_EXPAND author
