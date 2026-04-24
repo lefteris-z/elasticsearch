@@ -17,6 +17,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterAware;
 import org.elasticsearch.xpack.esql.capabilities.RewriteableAware;
 import org.elasticsearch.xpack.esql.core.expression.Expression;
+import org.elasticsearch.xpack.esql.core.expression.FieldAttribute;
 import org.elasticsearch.xpack.esql.core.util.Holder;
 import org.elasticsearch.xpack.esql.optimizer.rules.physical.local.LucenePushdownPredicates;
 import org.elasticsearch.xpack.esql.plan.logical.EsRelation;
@@ -26,7 +27,9 @@ import org.elasticsearch.xpack.esql.plugin.TransportActionServices;
 import org.elasticsearch.xpack.esql.session.IndexResolver;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -100,9 +103,7 @@ public final class QueryBuilderResolver {
                 Expression finalExpression = expr;
                 if (expr instanceof RewriteableAware rewriteableAware) {
                     QueryBuilder builder = rewriteableAware.queryBuilder(), initial = builder;
-                    builder = builder == null
-                        ? rewriteableAware.asQuery(LucenePushdownPredicates.DEFAULT, TranslatorHandler.TRANSLATOR_HANDLER).toQueryBuilder()
-                        : builder;
+                    builder = builder == null ? buildQueryBuilder(rewriteableAware, plan) : builder;
                     try {
                         builder = builder.rewrite(ctx);
                     } catch (IOException e) {
@@ -119,5 +120,19 @@ public final class QueryBuilderResolver {
             }
             return updated.get() ? new FunctionsRewriteable(newPlan) : this;
         }
+
+        private static QueryBuilder buildQueryBuilder(RewriteableAware rewriteableAware, LogicalPlan plan) {
+            RewriteableAware querySource = rewriteableAware;
+            if (rewriteableAware instanceof SingleFieldFullTextFunction ftf && ftf.fieldAsFieldAttribute() == null) {
+                FieldAttribute resolved = FullTextFunction.resolveToFieldAttribute(plan, ftf.field());
+                if (resolved != null) {
+                    List<Expression> newChildren = new ArrayList<>(ftf.children());
+                    newChildren.set(0, resolved);
+                    querySource = (RewriteableAware) ftf.replaceChildren(newChildren);
+                }
+            }
+            return querySource.asQuery(LucenePushdownPredicates.DEFAULT, TranslatorHandler.TRANSLATOR_HANDLER).toQueryBuilder();
+        }
+
     }
 }

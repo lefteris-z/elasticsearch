@@ -1041,3 +1041,37 @@ from all_types
 
 constant_keyword-foo:keyword | keyword:keyword
 ;
+
+matchOperatorAfterMVExpand
+required_capability: match_operator_colon
+
+FROM books 
+| MV_EXPAND author
+| WHERE author : "Faulkner"
+| keep book_no, author
+;
+
+book_no:keyword | author:text
+2883            | William Faulkner
+9896            | William Faulkner
+5404            | William Faulkner
+3870            | Keith Faulkner
+6151            | Keith Faulkner
+6151            | Rory Tyger
+3535            | Beverlie Manson
+3535            | Keith Faulkner
+4724            | William Faulkner
+4977            | William Faulkner
+8077            | William Faulkner
+2847            | Colleen Faulkner
+5119            | William Faulkner
+7381            | Bettilu Stein Faulkner
+5578            | William Faulkner
+4502            | Colleen Faulkner
+2378            | Carol Faulkner
+2378            | Holly Byers Ochoa
+2378            | Lucretia Mott
+2713            | William Faulkner
+8423            | Paul Faulkner
+3293            | Danny Faulkner
+;

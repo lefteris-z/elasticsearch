@@ -281,10 +281,7 @@ public abstract class FullTextFunction extends Function
                 plan,
                 condition,
                 FullTextFunction.class,
-                lp -> (lp instanceof Limit == false)
-                    && (lp instanceof Aggregate == false)
-                    && (lp instanceof UnionAll == false)
-                    && (lp instanceof MvExpand == false),
+                lp -> (lp instanceof Limit == false) && (lp instanceof Aggregate == false) && (lp instanceof UnionAll == false),
                 m -> "[" + m.functionName() + "] " + m.functionType(),
                 failures
             );
@@ -454,7 +451,7 @@ public abstract class FullTextFunction extends Function
      * Resolves the given field expression to a {@link FieldAttribute} by following rename alias chains
      * through {@link Project} nodes in the plan.
      */
-    private FieldAttribute resolveToFieldAttribute(LogicalPlan plan, Expression field) {
+    static FieldAttribute resolveToFieldAttribute(LogicalPlan plan, Expression field) {
         FieldAttribute fa = fieldAsFieldAttribute(field);
         if (fa != null) {
             return fa;
@@ -485,6 +482,17 @@ public abstract class FullTextFunction extends Function
                         }
                         return;
                     }
+                }
+            }
+
+            if (p instanceof MvExpand mvExpand) {
+                if (mvExpand.expanded().id().equals(current.get().id())) {
+                    FieldAttribute candidate = fieldAsFieldAttribute(mvExpand.target());
+                    if (candidate != null) {
+                        resolved.set(candidate);
+                    }
+                    breakEarly.set(true);
+                    return;
                 }
             }
         });
@@ -527,7 +535,7 @@ public abstract class FullTextFunction extends Function
         return fieldName;
     }
 
-    protected FieldAttribute fieldAsFieldAttribute(Expression field) {
+    protected static FieldAttribute fieldAsFieldAttribute(Expression field) {
         Expression fieldExpression = field;
         // Field may be converted to other data type (field_name :: data_type), so we need to check the original field
         if (fieldExpression instanceof AbstractConvertFunction convertFunction) {
