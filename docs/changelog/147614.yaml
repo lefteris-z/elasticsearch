@@ -1,0 +1,5 @@
+area: ES|QL
+issues: []
+pr: 147614
+summary: Fix up FTF error after FORK
+type: bug
