@@ -1646,6 +1646,16 @@ public class VerifierTests extends ESTestCase {
         );
     }
 
+    public void testFullTextFunctionsAfterFork() throws Exception {
+        fullText().query("from test metadata _id, _index, _score | fork (where true) (where true) | keep title | where title : \"data\"");
+        fullText().query(
+            "from test metadata _id, _index, _score | fork (where true) (where true) | keep title | where match(title, \"data\")"
+        );
+        fullText().query(
+            "from test metadata _id, _index, _score | fork (where true) (where true) | keep title | where match_phrase(title, \"data\")"
+        );
+    }
+
     // These should pass eventually once we lift some restrictions on match function
     private void checkFieldBasedWithNonIndexedColumn(String functionName, String functionInvocation, String functionType) {
         fullText().error(

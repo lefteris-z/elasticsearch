@@ -47,6 +47,7 @@ import org.elasticsearch.xpack.esql.optimizer.rules.physical.local.LucenePushdow
 import org.elasticsearch.xpack.esql.plan.logical.Aggregate;
 import org.elasticsearch.xpack.esql.plan.logical.EsRelation;
 import org.elasticsearch.xpack.esql.plan.logical.Filter;
+import org.elasticsearch.xpack.esql.plan.logical.Fork;
 import org.elasticsearch.xpack.esql.plan.logical.Limit;
 import org.elasticsearch.xpack.esql.plan.logical.LogicalPlan;
 import org.elasticsearch.xpack.esql.plan.logical.MvExpand;
@@ -486,6 +487,21 @@ public abstract class FullTextFunction extends Function
                         return;
                     }
                 }
+            }
+
+            if (p instanceof Fork fork) {
+                String currentName = current.get().name();
+                for (LogicalPlan branch : fork.children()) {
+                    for (Attribute branchAttr : branch.output()) {
+                        if (branchAttr.name().equals(currentName) && branchAttr instanceof FieldAttribute fAttr) {
+                            resolved.set(fAttr);
+                            breakEarly.set(true);
+                            return;
+                        }
+                    }
+                }
+                breakEarly.set(true);
+                return;
             }
         });
         return resolved.get();
