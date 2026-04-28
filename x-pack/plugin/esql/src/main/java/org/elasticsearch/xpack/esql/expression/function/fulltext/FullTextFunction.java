@@ -506,6 +506,8 @@ public abstract class FullTextFunction extends Function
                 return;
             }
 
+            // Resolve the underlying FieldAttribute by stepping through MvExpand
+            // from its `expanded` output back to its `target`.
             if (p instanceof MvExpand mvExpand && mvExpand.expanded().id().equals(current.get().id())) {
                 FieldAttribute candidate = fieldAsFieldAttribute(mvExpand.target());
                 if (candidate != null) {
