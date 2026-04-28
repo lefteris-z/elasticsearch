@@ -489,6 +489,8 @@ public abstract class FullTextFunction extends Function
                 }
             }
 
+            // Fork's own output exposes ReferenceAttributes, so to reach the underlying
+            // FieldAttribute we look inside each branch's output and match by name.
             if (p instanceof Fork fork) {
                 String currentName = current.get().name();
                 for (LogicalPlan branch : fork.children()) {

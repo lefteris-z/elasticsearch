@@ -2621,6 +2621,10 @@ public class EsqlCapabilities {
          * and the {@code TEXT_EMBEDDING} function.
          */
         INFERENCE_ACCEPT_TIMEOUT,
+        /**
+         * Support for the match operator after FORK.
+         */
+        MATCH_OPERATOR_AFTER_FORK,
 
         // Last capability should still have a comma for fewer merge conflicts when adding new ones :)
         // This comment prevents the semicolon from being on the previous capability when Spotless formats the file.

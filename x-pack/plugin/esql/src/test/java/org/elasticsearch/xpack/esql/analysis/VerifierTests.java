@@ -1646,13 +1646,23 @@ public class VerifierTests extends ESTestCase {
         );
     }
 
-    public void testFullTextFunctionsAfterFork() throws Exception {
+    public void testFullTextFunctionsAfterFork() {
         fullText().query("from test metadata _id, _index, _score | fork (where true) (where true) | keep title | where title : \"data\"");
         fullText().query(
             "from test metadata _id, _index, _score | fork (where true) (where true) | keep title | where match(title, \"data\")"
         );
         fullText().query(
             "from test metadata _id, _index, _score | fork (where true) (where true) | keep title | where match_phrase(title, \"data\")"
+        );
+    }
+
+    public void testFullTextFunctionAfterLimitInsideForkBranch() {
+        fullText().error(
+            "from test metadata _id, _index, _score "
+                + "| fork (where true | limit 10) (where true) "
+                + "| keep title "
+                + "| where match(title, \"data\")",
+            containsString("[MATCH] function cannot be used after LIMIT")
         );
     }
 
