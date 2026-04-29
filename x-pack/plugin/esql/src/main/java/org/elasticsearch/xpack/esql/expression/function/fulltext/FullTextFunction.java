@@ -288,7 +288,7 @@ public abstract class FullTextFunction extends Function
                     && (lp instanceof Aggregate == false)
                     && (lp instanceof UnionAll == false)
                     && (lp instanceof MvExpand == false)
-                    && (lp instanceof Fork == false),
+                    && (lp instanceof Fork == false)
                     && (lp instanceof LimitBy == false)
                     && (lp instanceof TopNBy == false),
                 m -> "[" + m.functionName() + "] " + m.functionType(),
