@@ -1064,20 +1064,3 @@ from employees
 y:long
 0
 ;
-
-matchOperatorAfterFork                                                                                
-required_capability: fork_v9                                                                          
-required_capability: match_operator_after_fork
-                                                                                                    
-FROM employees                                                                                        
-| FORK (WHERE emp_no > 10090)
-     (WHERE emp_no < 10005)                                                                         
-| WHERE first_name:"Bezalel" OR first_name:"Hironobu"
-| KEEP emp_no, first_name, _fork                                                                      
-| SORT _fork, emp_no
-;                                                                                                     
-                           
-emp_no:integer | first_name:keyword | _fork:keyword                                                   
-10100          | Hironobu           | fork1
-10002          | Bezalel            | fork2                                                           
-;                            

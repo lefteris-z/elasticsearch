@@ -285,7 +285,8 @@ public abstract class FullTextFunction extends Function
                 lp -> (lp instanceof Limit == false)
                     && (lp instanceof Aggregate == false)
                     && (lp instanceof UnionAll == false)
-                    && (lp instanceof MvExpand == false),
+                    && (lp instanceof MvExpand == false)
+                    && (lp instanceof Fork == false),
                 m -> "[" + m.functionName() + "] " + m.functionType(),
                 failures
             );
@@ -493,14 +494,30 @@ public abstract class FullTextFunction extends Function
             // FieldAttribute we look inside each branch's output and match by name.
             if (p instanceof Fork fork) {
                 String currentName = current.get().name();
+                // resolve when current field is part of the Fork output
+                boolean inForkOutput = fork.output().stream().anyMatch(a -> a.name().equals(currentName));
+                if (inForkOutput == false) {
+                    breakEarly.set(true);
+                    return;
+                }
+
+                // Every branch must contain this field, not just one
+                FieldAttribute candidate = null;
                 for (LogicalPlan branch : fork.children()) {
-                    for (Attribute branchAttr : branch.output()) {
-                        if (branchAttr.name().equals(currentName) && branchAttr instanceof FieldAttribute fAttr) {
-                            resolved.set(fAttr);
-                            breakEarly.set(true);
-                            return;
-                        }
+                    FieldAttribute match = branch.output()
+                        .stream()
+                        .filter(a -> a.name().equals(currentName) && a instanceof FieldAttribute)
+                        .map(a -> (FieldAttribute) a)
+                        .findFirst()
+                        .orElse(null);
+                    if (match == null) {
+                        candidate = null;
+                        break;
                     }
+                    candidate = match;
+                }
+                if (candidate != null) {
+                    resolved.set(candidate);
                 }
                 breakEarly.set(true);
                 return;

@@ -2626,10 +2626,6 @@ public class EsqlCapabilities {
          * and the {@code TEXT_EMBEDDING} function.
          */
         INFERENCE_ACCEPT_TIMEOUT,
-        /**
-         * Support for the match operator after FORK.
-         */
-        MATCH_OPERATOR_AFTER_FORK,
 
         /**
          * Fix for SET reporting wrong line/column number (-1:-1) in validation errors.
