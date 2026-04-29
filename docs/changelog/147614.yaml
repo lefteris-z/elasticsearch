@@ -1,5 +1,6 @@
 area: ES|QL
-issues: []
+issues:
+  - 142710
 pr: 147614
-summary: Fix up FTF error after FORK
+summary: Fix validation error when search functions are used after FORK
 type: bug
