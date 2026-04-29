@@ -1717,6 +1717,22 @@ public class VerifierTests extends ESTestCase {
             );
     }
 
+    public void testFullTextFunctionsAfterForkWithEvalInBranch() {
+        fullText().stripErrorPrefix(false)
+            .error(
+                "from test metadata _id, _index, _score "
+                    + "| fork (where true) (where true | EVAL title = \"abc\") "
+                    + "| keep title "
+                    + "| where title : \"data\"",
+                allOf(
+                    containsString("Found 3 problems"),
+                    containsString("[:] operator cannot be used after FORK"),
+                    containsString("[:] operator cannot operate on [title], which is not a field from an index mapping"),
+                    containsString("Column [title] has conflicting data types in FORK branches: [KEYWORD] and [TEXT]")
+                )
+            );
+    }
+
     // These should pass eventually once we lift some restrictions on match function
     private void checkFieldBasedWithNonIndexedColumn(String functionName, String functionInvocation, String functionType) {
         fullText().error(

@@ -499,7 +499,7 @@ public abstract class FullTextFunction extends Function
             if (p instanceof Fork fork) {
                 String currentName = current.get().name();
                 // resolve when current field is part of the Fork output
-                boolean inForkOutput = fork.output().stream().anyMatch(a -> a.name().equals(currentName));
+                boolean inForkOutput = fork.output().stream().anyMatch(a -> a.id().equals(current.get().id()));
                 if (inForkOutput == false) {
                     breakEarly.set(true);
                     return;
