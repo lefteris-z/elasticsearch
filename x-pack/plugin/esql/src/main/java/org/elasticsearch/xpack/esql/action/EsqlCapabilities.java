@@ -2455,6 +2455,15 @@ public class EsqlCapabilities {
         EXTERNAL_SOURCE_FILE_METADATA_COLUMNS(DataSourceMetadata.ESQL_EXTERNAL_DATASOURCES_FEATURE_FLAG.isEnabled()),
 
         /**
+         * Multi-file external UNION_BY_NAME widens cross-file type disagreements to KEYWORD
+         * instead of throwing at planning time. The reconciler emits a warning header per
+         * affected column, the per-file ColumnMapping carries a stringification cast, and the
+         * reader's output is adapted via SchemaAdaptingIterator. STRICT mode still throws.
+         * See esql-planning#794.
+         */
+        EXTERNAL_UNION_BY_NAME_KEYWORD_FALLBACK(DataSourceMetadata.ESQL_EXTERNAL_DATASOURCES_FEATURE_FLAG.isEnabled()),
+
+        /**
          * {@code FROM <dataset>} resolved through the same pipeline as {@code FROM <index>} (Phase 1: dataset-only patterns).
          * Gated on the same flag as {@link #EXTERNAL_COMMAND}.
          */
@@ -2841,12 +2850,6 @@ public class EsqlCapabilities {
          * cartesian_point, geo_shape, cartesian_shape, geohash, geotile, geohex.
          */
         FIRST_AGG_EXTENDED_TYPES,
-
-        /**
-         * Support EARLIEST aggregation on extended types: version, unsigned_long, geo_point,
-         * cartesian_point, geo_shape, cartesian_shape, geohash, geotile, geohex.
-         */
-        EARLIEST_AGG_EXTENDED_TYPES,
 
         /**
          * Support FIRST and EARLIEST aggregation on dense_vector fields.
