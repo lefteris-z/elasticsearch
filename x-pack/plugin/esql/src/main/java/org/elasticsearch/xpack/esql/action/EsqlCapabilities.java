@@ -2858,9 +2858,9 @@ public class EsqlCapabilities {
         FIRST_AGG_EXTENDED_TYPES,
 
         /**
-         * Support FIRST and EARLIEST aggregation on dense_vector fields.
+         * Support FIRST and EARLIEST aggregation on the remaining types: dense_vector, exponential_histogram.
          */
-        FIRST_AGG_DENSE_VECTOR,
+        FIRST_AGG_EXTENDED_TYPES_2,
 
         // Last capability should still have a comma for fewer merge conflicts when adding new ones :)
         // This comment prevents the semicolon from being on the previous capability when Spotless formats the file.
