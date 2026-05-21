@@ -7,7 +7,6 @@
 | boolean | boolean |
 | date | date |
 | date_nanos | date_nanos |
-| dense_vector {applies_to}`stack: ga 9.5.0` | dense_vector |
 | double | double |
 | integer | integer |
 | ip | ip |
